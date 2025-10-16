@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cinematic Quote Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #4F46E5;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #4F46E5;
+        }
+        #brutalityToggle:checked + .toggle-label {
+            background-color: #DC2626; /* Red for brutality */
+        }
+        #brutalityToggle:checked {
+            border-color: #DC2626;
+        }
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fade-in 0.5s ease-out forwards;
+        }
+        audio::-webkit-media-controls-panel {
+            background-color: #4A5568;
+        }
+        audio::-webkit-media-controls-play-button,
+        audio::-webkit-media-controls-timeline,
+        audio::-webkit-media-controls-current-time-display,
+        audio::-webkit-media-controls-time-remaining-display,
+        audio::-webkit-media-controls-volume-slider,
+        audio::-webkit-media-controls-mute-button {
+            filter: invert(1);
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-2xl mx-auto bg-gray-800 rounded-2xl shadow-lg p-6 md:p-8 space-y-6">
+        <!-- Header -->
+        <div class="text-center">
+            <h1 class="text-3xl font-bold text-indigo-400">Cinematic Quote Generator</h1>
+            <p class="text-gray-400 mt-2">Create powerful, minimalist quotes for your Instagram.</p>
+        </div>
+
+        <!-- Inputs -->
+        <div class="space-y-4">
+            <input type="text" id="movieName" placeholder="Enter movie name (e.g., The Dark Knight)" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            
+            <textarea id="sceneContext" placeholder="What is the context of the scene? (Or let AI analyze it!)" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500" rows="3"></textarea>
+
+            <div>
+                <label for="imageUpload" class="block text-sm font-medium text-gray-300 mb-2">Upload a movie scene</label>
+                <input type="file" id="imageUpload" accept="image/*" class="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-700 cursor-pointer">
+                <div class="text-center">
+                    <img id="imagePreview" src="" alt="Image preview" class="mt-4 rounded-lg hidden max-h-60 w-auto mx-auto"/>
+                    <button id="analyzeBtn" class="mt-2 bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 hidden">
+                        ✨ Analyze Scene
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toggle Switches -->
+        <div class="bg-gray-700/50 p-4 rounded-lg space-y-3">
+            <div class="flex items-center justify-between">
+                <span class="font-medium text-gray-300">Use Movie Context</span>
+                <div class="relative inline-block w-10 align-middle select-none transition duration-200 ease-in">
+                    <input type="checkbox" name="toggle" id="movieToggle" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                    <label for="movieToggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-600 cursor-pointer"></label>
+                </div>
+            </div>
+            <div class="flex items-center justify-between">
+                <span class="font-medium text-gray-300">"Minimal" Big-Word Style</span>
+                <div class="relative inline-block w-10 align-middle select-none transition duration-200 ease-in">
+                    <input type="checkbox" name="toggle" id="minimalToggle" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                    <label for="minimalToggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-600 cursor-pointer"></label>
+                </div>
+            </div>
+            <div class="flex items-center justify-between">
+                <span class="font-medium text-red-400">BRUTALITY</span>
+                <div class="relative inline-block w-10 align-middle select-none transition duration-200 ease-in">
+                    <input type="checkbox" name="toggle" id="brutalityToggle" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                    <label for="brutalityToggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-600 cursor-pointer"></label>
+                </div>
+            </div>
+        </div>
+
+        <!-- API Key Input -->
+        <div class="space-y-2 pt-2">
+            <label for="apiKeyInput" class="block text-sm font-medium text-gray-300">Your Gemini API Key</label>
+            <input type="password" id="apiKeyInput" value="AIzaSyANHlZwvBi4p2J2BPFKEdTZi-g5R1v2-DQ" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <p class="text-xs text-gray-500">Get your key from Google AI Studio. The key is stored only in your browser.</p>
+        </div>
+
+
+        <!-- Generate Button -->
+        <button id="generateBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300 ease-in-out transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed">
+            Generate Sentences
+        </button>
+
+        <!-- Loading Spinner -->
+        <div id="loader" class="text-center hidden">
+            <svg class="animate-spin h-8 w-8 text-indigo-400 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p id="loaderText" class="mt-2 text-gray-400">Generating cinematic quotes...</p>
+        </div>
+        
+        <!-- Error Message -->
+        <div id="errorMessage" class="text-center text-red-400 hidden p-3 bg-red-900/20 rounded-lg"></div>
+
+        <!-- Results -->
+        <div id="results" class="hidden space-y-3 pt-4">
+            <!-- Sentences will be injected here -->
+        </div>
+
+        <!-- Action Buttons -->
+        <div id="actionButtons" class="hidden text-center pt-4">
+            <button id="shuffleBtn" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-6 rounded-lg transition duration-300">
+                Shuffle
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+        const movieNameInput = document.getElementById('movieName');
+        const sceneContextInput = document.getElementById('sceneContext');
+        const imageUpload = document.getElementById('imageUpload');
+        const imagePreview = document.getElementById('imagePreview');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const movieToggle = document.getElementById('movieToggle');
+        const minimalToggle = document.getElementById('minimalToggle');
+        const brutalityToggle = document.getElementById('brutalityToggle');
+        const apiKeyInput = document.getElementById('apiKeyInput');
+        const generateBtn = document.getElementById('generateBtn');
+        const loader = document.getElementById('loader');
+        const loaderText = document.getElementById('loaderText');
+        const errorMessage = document.getElementById('errorMessage');
+        const resultsDiv = document.getElementById('results');
+        const actionButtons = document.getElementById('actionButtons');
+        const shuffleBtn = document.getElementById('shuffleBtn');
+
+        let uploadedImageInfo = { base64: null, mimeType: null };
+
+        imageUpload.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const fullDataUrl = e.target.result;
+                    uploadedImageInfo.base64 = fullDataUrl.split(',')[1];
+                    uploadedImageInfo.mimeType = fullDataUrl.split(';')[0].split(':')[1];
+                    imagePreview.src = fullDataUrl;
+                    imagePreview.classList.remove('hidden');
+                    analyzeBtn.classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            } else {
+                uploadedImageInfo = { base64: null, mimeType: null };
+                imagePreview.classList.add('hidden');
+                analyzeBtn.classList.add('hidden');
+            }
+        });
+
+        generateBtn.addEventListener('click', generateSentences);
+        shuffleBtn.addEventListener('click', generateSentences);
+        analyzeBtn.addEventListener('click', analyzeScene);
+
+        async function analyzeScene() {
+            if (!uploadedImageInfo.base64) {
+                showError("Please upload an image first to analyze.");
+                return;
+            }
+            setLoading(true, "Analyzing scene...");
+            try {
+                const prompt = "Analyze the mood, atmosphere, and key visual elements of this movie scene. Describe it in one or two sentences for context to generate motivational quotes.";
+                const response = await callGeminiWithImageAPI(prompt, uploadedImageInfo.base64, uploadedImageInfo.mimeType);
+                sceneContextInput.value = response.candidates[0].content.parts[0].text;
+            } catch (error) {
+                console.error('Error analyzing scene:', error);
+                // Don't show generic error if it's an API key issue
+                if (!error.message.includes("API Key")) {
+                    showError('Failed to analyze the scene. Please try again.');
+                }
+            } finally {
+                setLoading(false);
+            }
+        }
+
+
+        async function generateSentences() {
+            setLoading(true, "Generating sentences...");
+            let prompt = "";
+
+            try {
+                if (movieToggle.checked) {
+                    const movieName = movieNameInput.value.trim();
+                    const sceneContext = sceneContextInput.value.trim();
+
+                    if (!movieName) {
+                        showError("Please enter a movie name to use its context.");
+                        setLoading(false);
+                        return;
+                    }
+                    
+                    const movieDetails = await getMovieDetails(movieName);
+
+                    if (!movieDetails) {
+                         showError(`Could not find details for "${movieName}". Please check the title.`);
+                         setLoading(false);
+                         return;
+                    }
+
+                    prompt = `Based on the movie "${movieDetails.title}" (${movieDetails.year}), which is a ${movieDetails.genre} about "${movieDetails.plot}", generate 10 short, powerful, motivational or philosophical sentences (3-8 words). The tone should be minimalist, stoic, and thought-provoking, suitable for an Instagram page about productivity and self-improvement. Focus on themes from the movie.`;
+
+                    if (sceneContext) {
+                        prompt += ` Also consider this specific scene context: "${sceneContext}".`;
+                    }
+
+                } else {
+                    prompt = `Generate 10 short, powerful, motivational or philosophical sentences (3-8 words). The tone should be minimalist, stoic, and thought-provoking, suitable for an Instagram page focused on themes like productivity, minimalism, and stoicism.`;
+                }
+
+                if (minimalToggle.checked) {
+                     prompt += ` Each sentence MUST be structured around one or two very impactful, capitalized words (like DELUSIONAL, HARD, STOP, START, ENOUGH, FAIL, WIN, SUCCESS) and a few supporting words. For example: 'Being DELUSIONAL is a superpower.' or 'It's HARD for a reason.' The capitalized word is the main focus.`;
+                }
+
+                if (brutalityToggle.checked) {
+                    prompt += ` The sentences should be brutally honest and direct, using strong and profane language (e.g., 'Fuck your excuses', 'Stop the bullshit') to deliver a powerful, unfiltered message.`;
+                }
+
+                const sentences = await callGeminiAPI(prompt);
+                displayResults(sentences);
+
+            } catch (error) {
+                console.error('Error generating sentences:', error);
+                if (!error.message.includes("API Key")) {
+                    showError('Failed to generate sentences. Please try again.');
+                }
+            } finally {
+                setLoading(false);
+            }
+        }
+        
+        async function getMovieDetails(movieName) {
+            const mockDB = {
+                "the dark knight": { title: "The Dark Knight", year: "2008", genre: "Action, Crime, Drama", plot: "When the menace known as the Joker wreaks havoc and chaos on the people of Gotham, Batman must accept one of the greatest psychological and physical tests of his ability to fight injustice." },
+                "fight club": { title: "Fight Club", year: "1999", genre: "Drama", plot: "An insomniac office worker looking for a way to change his life crosses paths with a devil-may-care soap maker and they form an underground fight club that evolves into something much, much more." },
+                "interstellar": { title: "Interstellar", year: "2014", genre: "Sci-Fi, Adventure, Drama", plot: "A team of explorers travel through a wormhole in space in an an attempt to ensure humanity's survival." },
+                "blade runner 2049": { title: "Blade Runner 2049", year: "2017", genre: "Sci-Fi, Action, Mystery", plot: "A young Blade Runner's discovery of a long-buried secret leads him to track down former Blade Runner Rick Deckard, who's been missing for thirty years." }
+            };
+            const key = movieName.toLowerCase();
+            return mockDB[key] || { title: movieName, year: 'N/A', genre: 'Unknown', plot: 'A story of challenge and perseverance.' };
+        }
+
+        async function callGeminiAPI(prompt, schemaRequired = true) {
+            const apiKey = apiKeyInput.value.trim();
+            if (!apiKey) {
+                showError("Please enter your Gemini API Key to use this feature.");
+                throw new Error("API Key is missing.");
+            }
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            
+            const payload = { contents: [{ parts: [{ text: prompt }] }] };
+
+            if (schemaRequired) {
+                payload.generationConfig = {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "OBJECT",
+                        properties: { quotes: { type: "ARRAY", items: { type: "STRING" } } }
+                    }
+                };
+            }
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) throw new Error(`API call failed with status: ${response.status}`);
+            
+            const result = await response.json();
+            
+            if (schemaRequired) {
+                const jsonText = result.candidates[0].content.parts[0].text;
+                return JSON.parse(jsonText).quotes.slice(0, 10);
+            }
+            return result.candidates[0].content.parts[0].text;
+        }
+
+        async function callGeminiWithImageAPI(prompt, base64Data, mimeType) {
+             const apiKey = apiKeyInput.value.trim();
+             if (!apiKey) {
+                showError("Please enter your Gemini API Key to use this feature.");
+                throw new Error("API Key is missing.");
+             }
+             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+             const payload = {
+                 contents: [{
+                     parts: [
+                         { text: prompt },
+                         { inlineData: { mimeType: mimeType, data: base64Data } }
+                     ]
+                 }]
+             };
+             const response = await fetch(apiUrl, {
+                 method: 'POST',
+                 headers: { 'Content-Type': 'application/json' },
+                 body: JSON.stringify(payload)
+             });
+             if (!response.ok) throw new Error(`Image API call failed: ${response.status}`);
+             return await response.json();
+        }
+
+        async function improveSentence(sentence, buttonElement) {
+            buttonElement.disabled = true;
+            buttonElement.textContent = 'Improving...';
+            try {
+                let prompt = `Improve this short, motivational sentence to make it more impactful and profound, while keeping it under 8 words. Original sentence: "${sentence}"`;
+                if (minimalToggle.checked) {
+                    prompt += ` The improved sentence MUST also be structured around one or two very impactful, capitalized words (like DELUSIONAL, HARD, STOP, START, ENOUGH, FAIL, WIN, SUCCESS) and a few supporting words. For example: 'Being DELUSIONAL is a superpower.' or 'It's HARD for a reason.' The capitalized word is the main focus.`;
+                }
+                if (brutalityToggle.checked) {
+                    prompt += ` The improved sentence must also be brutally honest and direct, using strong and profane language (e.g., 'Fuck your excuses', 'Stop the bullshit') to deliver a powerful, unfiltered message.`;
+                }
+                const improvedSentences = await callGeminiAPI(prompt);
+                if (improvedSentences && improvedSentences.length > 0) {
+                     const sentenceWrapper = buttonElement.parentElement.parentElement;
+                     const sentenceElement = sentenceWrapper.querySelector('span');
+                     if (sentenceElement) {
+                        sentenceElement.textContent = improvedSentences[0];
+                     }
+                }
+            } catch (error) {
+                console.error('Error improving sentence:', error);
+            } finally {
+                buttonElement.disabled = false;
+                buttonElement.textContent = 'Improve';
+            }
+        }
+        
+        async function generateCaption(sentence, buttonElement) {
+            buttonElement.disabled = true;
+            buttonElement.textContent = '...';
+            const captionContainer = buttonElement.closest('.result-item').querySelector('.caption-container');
+            captionContainer.classList.remove('hidden');
+            captionContainer.textContent = '✨ Generating caption...';
+
+            try {
+                const movieName = movieNameInput.value.trim();
+                let prompt = `You are a social media manager for an Instagram page about stoicism, minimalism, and productivity. Write a short, engaging caption for a post. The post image has the text "${sentence}" on it.`;
+                if (movieName) {
+                    prompt += ` The image is from the movie "${movieName}".`;
+                }
+                prompt += ` The caption should be 1-3 sentences long, reflect the quote's theme, and end with a list of 5-7 relevant hashtags.`
+
+                const caption = await callGeminiAPI(prompt, false);
+                captionContainer.textContent = caption;
+
+            } catch (error) {
+                console.error('Error generating caption:', error);
+                captionContainer.textContent = 'Could not generate a caption. Please try again.';
+            } finally {
+                buttonElement.disabled = false;
+                buttonElement.textContent = 'Get Caption';
+            }
+        }
+        
+        // --- TTS Helper Functions ---
+        function base64ToArrayBuffer(base64) {
+            const binaryString = window.atob(base64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+
+        function pcmToWav(pcmData, sampleRate) {
+            const numChannels = 1;
+            const bytesPerSample = 2; // 16-bit
+            const blockAlign = numChannels * bytesPerSample;
+            const byteRate = sampleRate * blockAlign;
+            const dataSize = pcmData.length * bytesPerSample;
+            const buffer = new ArrayBuffer(44 + dataSize);
+            const view = new DataView(buffer);
+
+            function writeString(view, offset, string) {
+                for (let i = 0; i < string.length; i++) {
+                    view.setUint8(offset + i, string.charCodeAt(i));
+                }
+            }
+
+            writeString(view, 0, 'RIFF');
+            view.setUint32(4, 36 + dataSize, true);
+            writeString(view, 8, 'WAVE');
+            writeString(view, 12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true);
+            view.setUint16(22, numChannels, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, byteRate, true);
+            view.setUint16(32, blockAlign, true);
+            view.setUint16(34, 16, true);
+            writeString(view, 36, 'data');
+            view.setUint32(40, dataSize, true);
+
+            for (let i = 0; i < pcmData.length; i++) {
+                view.setInt16(44 + i * 2, pcmData[i], true);
+            }
+
+            return new Blob([view], { type: 'audio/wav' });
+        }
+
+
+        async function generateAudio(sentence, buttonElement) {
+             buttonElement.disabled = true;
+             buttonElement.textContent = '...';
+             const audioContainer = buttonElement.closest('.result-item').querySelector('.audio-container');
+             audioContainer.innerHTML = '✨ Generating audio...';
+             audioContainer.classList.remove('hidden');
+
+             try {
+                const apiKey = apiKeyInput.value.trim();
+                if (!apiKey) {
+                   showError("Please enter your Gemini API Key to use this feature.");
+                   throw new Error("API Key is missing.");
+                }
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
+                
+                const payload = {
+                    contents: [{
+                        parts: [{ text: `Say in a calm and profound tone: ${sentence}` }]
+                    }],
+                    generationConfig: {
+                        responseModalities: ["AUDIO"],
+                    },
+                    model: "gemini-2.5-flash-preview-tts"
+                };
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) throw new Error(`TTS API call failed: ${response.status}`);
+
+                const result = await response.json();
+                const part = result?.candidates?.[0]?.content?.parts?.[0];
+                const audioData = part?.inlineData?.data;
+                const mimeType = part?.inlineData?.mimeType;
+
+                if (audioData && mimeType && mimeType.startsWith("audio/")) {
+                    const sampleRate = parseInt(mimeType.match(/rate=(\d+)/)[1], 10);
+                    const pcmData = base64ToArrayBuffer(audioData);
+                    const pcm16 = new Int16Array(pcmData);
+                    const wavBlob = pcmToWav(pcm16, sampleRate);
+                    const audioUrl = URL.createObjectURL(wavBlob);
+                    
+                    audioContainer.innerHTML = ''; // Clear loading text
+
+                    const audio = document.createElement('audio');
+                    audio.controls = true;
+                    audio.src = audioUrl;
+                    audio.className = 'w-full h-10';
+
+                    const downloadLink = document.createElement('a');
+                    downloadLink.href = audioUrl;
+                    downloadLink.download = `${sentence.replace(/\s+/g, '_').toLowerCase()}.wav`;
+                    downloadLink.textContent = 'Download Audio';
+                    downloadLink.className = 'text-sm text-indigo-400 hover:text-indigo-300 mt-2 block text-center';
+
+                    audioContainer.appendChild(audio);
+                    audioContainer.appendChild(downloadLink);
+                } else {
+                    throw new Error('Invalid audio data received.');
+                }
+
+             } catch(error) {
+                 console.error('Error generating audio:', error);
+                 if (!error.message.includes("API Key")) {
+                    audioContainer.textContent = 'Could not generate audio.';
+                 } else {
+                    audioContainer.innerHTML = '';
+                    audioContainer.classList.add('hidden');
+                 }
+             } finally {
+                 buttonElement.disabled = false;
+                 buttonElement.textContent = 'Get Audio';
+             }
+        }
+
+        function displayResults(sentences) {
+            resultsDiv.innerHTML = '';
+            sentences.forEach(sentence => {
+                const resultItem = document.createElement('div');
+                resultItem.className = 'bg-gray-700 p-3 rounded-lg animate-fade-in result-item';
+
+                const sentenceWrapper = document.createElement('div');
+                sentenceWrapper.className = 'flex items-center justify-between';
+                
+                const sentenceText = document.createElement('span');
+                sentenceText.className = 'flex-grow text-gray-200';
+                sentenceText.textContent = sentence;
+
+                const btnGroup = document.createElement('div');
+                btnGroup.className = 'flex items-center space-x-2 flex-shrink-0 ml-4';
+
+                const improveBtn = document.createElement('button');
+                improveBtn.className = 'bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-1 px-3 text-sm rounded-md transition-colors';
+                improveBtn.textContent = 'Improve';
+                improveBtn.onclick = () => improveSentence(sentenceText.textContent, improveBtn);
+
+                const captionBtn = document.createElement('button');
+                captionBtn.className = 'bg-teal-500 hover:bg-teal-600 text-white font-semibold py-1 px-3 text-sm rounded-md transition-colors';
+                captionBtn.textContent = 'Get Caption';
+                captionBtn.onclick = () => generateCaption(sentenceText.textContent, captionBtn);
+                
+                const audioBtn = document.createElement('button');
+                audioBtn.className = 'bg-sky-500 hover:bg-sky-600 text-white font-semibold py-1 px-3 text-sm rounded-md transition-colors';
+                audioBtn.textContent = 'Get Audio';
+                audioBtn.onclick = () => generateAudio(sentenceText.textContent, audioBtn);
+                
+                const captionContainer = document.createElement('div');
+                captionContainer.className = 'mt-3 p-3 bg-gray-600/50 rounded-md text-xs text-gray-300 hidden whitespace-pre-wrap caption-container';
+                
+                const audioContainer = document.createElement('div');
+                audioContainer.className = 'mt-3 p-2 bg-gray-600/50 rounded-md hidden audio-container';
+
+                btnGroup.appendChild(improveBtn);
+                btnGroup.appendChild(captionBtn);
+                btnGroup.appendChild(audioBtn);
+                sentenceWrapper.appendChild(sentenceText);
+                sentenceWrapper.appendChild(btnGroup);
+                
+                resultItem.appendChild(sentenceWrapper);
+                resultItem.appendChild(captionContainer);
+                resultItem.appendChild(audioContainer);
+
+                resultsDiv.appendChild(resultItem);
+            });
+            actionButtons.classList.remove('hidden');
+        }
+
+        function setLoading(isLoading, message = "Generating sentences...") {
+            loaderText.textContent = message;
+            if (isLoading) {
+                generateBtn.disabled = true;
+                loader.classList.remove('hidden');
+                resultsDiv.classList.add('hidden');
+                actionButtons.classList.add('hidden');
+                errorMessage.classList.add('hidden');
+            } else {
+                generateBtn.disabled = false;
+                loader.classList.add('hidden');
+                if (resultsDiv.innerHTML !== '') {
+                    resultsDiv.classList.remove('hidden');
+                }
+            }
+        }
+        
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.classList.remove('hidden');
+        }
+
+    </script>
+</body>
+</html>
+
